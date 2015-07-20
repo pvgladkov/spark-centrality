@@ -5,7 +5,6 @@ import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
 
-import scala.reflect.ClassTag
 
 
 object HarmonicCentralityExample {
@@ -53,22 +52,22 @@ object HarmonicCentralityExample {
     ))
 
     val edges: RDD[Edge[Double]] = sc.parallelize(Array(
-      Edge(1L, 2L, 1.toDouble), Edge(2L, 3L, 2.toDouble),
-      Edge(2L, 1L, 1.toDouble), Edge(3L, 2L, 2.toDouble)
+      Edge(1L, 2L, 1.toDouble), Edge(2L, 3L, 1.toDouble),
+      Edge(2L, 1L, 1.toDouble), Edge(3L, 2L, 1.toDouble)
     ))
 
     val graph = Graph(vertices, edges)
 
-  //		val ranks = graph.pageRank(0.0001).vertices.collect()
-  //		val ranks_1 = graph.pageRank(0.0001).edges.collect()
-  //
-  //		for (f<-ranks){
-  //			println(f.toString())
-  //		}
-  //
-  //		for (f<-ranks_1){
-  //			println(f.toString())
-  //		}
+//		val ranks = graph.pageRank(0.0001).vertices.collect()
+//		val ranks_1 = graph.pageRank(0.0001).edges.collect()
+//
+//		for (f<-ranks){
+//			println(f.toString())
+//		}
+//
+//		for (f<-ranks_1){
+//			println(f.toString())
+//		}
 
     val neighbors = vertexNeighbours(graph).collect()
 
@@ -81,6 +80,11 @@ object HarmonicCentralityExample {
     val hr = center.personalizedHarmonicCentrality(sourceId, graph)
 
     println(hr)
+
+    val hc = center.harmonicCentrality(graph)
+
+    println(hc.vertices.collect().mkString("\n"))
+    println(hc.edges.collect().mkString("\n"))
 
     sc.stop()
   }

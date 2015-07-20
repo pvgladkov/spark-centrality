@@ -1,8 +1,8 @@
 package cc.p2k.spark.graphx.lib
 
-import org.apache.spark.Logging
+import org.apache.spark.graphx.lib.ShortestPaths
+import org.apache.spark.{Logging}
 import org.apache.spark.graphx._
-
 import scala.language.postfixOps
 
 
@@ -16,17 +16,19 @@ object HarmonicCentrality extends Logging {
       }
     )
 
-    val paths = initialGraph.pregel(Double.PositiveInfinity)(
-      (id, dist, newDist) => math.min(dist, newDist),
-      triplet => {
-        if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
-          Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
-        } else {
-          Iterator.empty
-        }
-      },
-      (a,b) => math.min(a,b)
-    )
+    val vp = (id: VertexId, dist: Double, newDist:Double) => math.min(dist, newDist)
+
+    def mergeMsg(a: Double, b: Double) = math.min(a,b)
+
+    def sendMsg(triplet: EdgeTriplet[Double, Double]) = {
+      if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
+        Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
+      } else {
+        Iterator.empty
+      }
+    }
+
+    val paths = initialGraph.pregel(Double.PositiveInfinity)(vp, sendMsg, mergeMsg)
 
     val hr = paths.vertices
       .map[Double](
@@ -41,11 +43,18 @@ object HarmonicCentrality extends Logging {
   }
 
   def harmonicCentrality(graph: Graph[Double, Double]): Graph[Double, Double] = {
-    val res = graph.mapVertices[Double](
-      (id, _) => personalizedHarmonicCentrality(id, graph)
-    )
+    val vertices = graph.vertices.collect().map(tuple => tuple._1)
+    val paths = ShortestPaths.run(graph, vertices)
 
-    res
+    val hc = paths.mapVertices((id, sMap) => {
+      var s = 0.0
+      for ((k,v) <- sMap){
+        if (v != 0) s += 1.0/v
+      }
+      s
+    })
+
+    hc
   }
 
 }
