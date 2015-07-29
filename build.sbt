@@ -8,3 +8,4 @@ organization := "cc.p2k"
 
 libraryDependencies += "org.apache.spark" % "spark-graphx_2.10" % "1.4.1"
 libraryDependencies += "org.apache.spark" % "spark-core_2.10" % "1.4.1"
+libraryDependencies += "com.twitter" % "algebird-core_2.10" % "0.10.2"

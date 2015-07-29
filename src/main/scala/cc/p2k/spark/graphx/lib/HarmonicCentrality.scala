@@ -10,6 +10,9 @@ import com.twitter.algebird._
 
 object HarmonicCentrality extends Logging {
 
+  /** маппинг соседей по расстоянию */
+  type NMap = mutable.HashMap[Int, HLL]
+
   /**
    * Harmonic Centrality for node
    * @param vertexId VertexId
@@ -52,18 +55,14 @@ object HarmonicCentrality extends Logging {
 
   /**
    * @param graph Graph
+   * @param maxDistance Int
    * @return
    */
-  def harmonicCentrality(graph: Graph[Double, Int]): Graph[Double, Int] = {
+  def harmonicCentrality(graph: Graph[Double, Int], maxDistance: Int = 6): Graph[NMap, Int] = {
 
     val BIT_SIZE = 12
 
     val hll = new HyperLogLogMonoid(BIT_SIZE)
-
-    /** маппинг соседей по расстоянию */
-    type NMap = mutable.HashMap[Int, HLL]
-
-    type PMap = mutable.HashMap[VertexId, Int]
 
     val initGraph: Graph[NMap, Int] = graph.mapVertices(
       (id: VertexId, v: Double) => new mutable.HashMap[Int, HLL]()
@@ -73,9 +72,9 @@ object HarmonicCentrality extends Logging {
       override def default(key:Int) = new HyperLogLogMonoid(BIT_SIZE).zero
     }
 
-    def incrementMap(p: PMap): PMap = p.map { case (v, d) => v -> (d + 1) }
-
-    def incrementNMap(p: NMap): NMap = p.map { case (v, d) => (v + 1) -> d }
+    def incrementNMap(p: NMap): NMap = p.map {
+      case (v, d) if v < maxDistance => (v + 1) -> d
+    }
 
     /**
      * @param x VertexId
@@ -98,10 +97,10 @@ object HarmonicCentrality extends Logging {
      * @param edge EdgeTriplet  EdgeTriplet[VD, ED]
      * @return Iterator[(VertexId, A)]
      */
-    def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, PMap)] ={
+    def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, NMap)] ={
       val newAttr = incrementNMap(edge.dstAttr)
-      if (edge.srcAttr < 3) {
-        Iterator((edge.dstId, edge.srcAttr + 1.0))
+      if (edge.srcAttr != newAttr) {
+        Iterator((edge.dstId, newAttr))
       } else {
         Iterator.empty
       }
@@ -114,7 +113,8 @@ object HarmonicCentrality extends Logging {
      */
     def messageCombiner(a: NMap, b: NMap): NMap = a
 
-    Pregel(initGraph, initMessage)(vertexProgram, sendMessage, messageCombiner)
+    Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
+      vertexProgram, sendMessage, messageCombiner)
   }
 
 }
