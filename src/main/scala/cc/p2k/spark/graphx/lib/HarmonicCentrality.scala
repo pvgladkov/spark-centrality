@@ -117,4 +117,17 @@ object HarmonicCentrality extends Logging {
       vertexProgram, sendMessage, messageCombiner)
   }
 
+  private def calculateForNode(distances: NMap) = {
+    var harmonic = 0.0
+    for ((k, v) <- distances){
+      val current = v.estimatedSize
+      val prev = distances(k-1).estimatedSize
+      harmonic += BigDecimal((current - prev) / k)
+        .setScale(5, BigDecimal.RoundingMode.HALF_UP)
+        .toDouble
+    }
+
+
+  }
+
 }
