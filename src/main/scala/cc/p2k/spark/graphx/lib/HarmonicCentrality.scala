@@ -64,7 +64,9 @@ object HarmonicCentrality extends Logging {
     val hll = new HyperLogLogMonoid(BIT_SIZE)
 
     val initGraph: Graph[NMap, Int] = graph.mapVertices(
-      (id: VertexId, v: Double) => new mutable.HashMap[Int, HLL]()
+      (id: VertexId, v: Double) => mutable.HashMap[Int, HLL](
+        (0, hll.create(id.toString.getBytes))
+      )
     )
 
     val initMessage = new mutable.HashMap[Int, HLL]() {
@@ -82,7 +84,8 @@ object HarmonicCentrality extends Logging {
      * @return VD
      */
     def vertexProgram(x: VertexId, vertexValue: NMap, message: NMap) = {
-      vertexValue(0) = hll.create(x.toString.getBytes)
+      println(x + " rec " + message)
+      println(x + " has val: " + vertexValue)
       for ((distance, _hll) <- message) {
         val op = vertexValue.get(distance)
         if (op.isEmpty){
@@ -90,6 +93,7 @@ object HarmonicCentrality extends Logging {
         }
         vertexValue(distance) += _hll
       }
+      println("res val for " + x + " : "+ vertexValue)
       vertexValue
     }
 
@@ -98,8 +102,10 @@ object HarmonicCentrality extends Logging {
      * @return Iterator[(VertexId, A)]
      */
     def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, NMap)] ={
-      val newAttr = incrementNMap(edge.dstAttr)
-      if (edge.srcAttr != newAttr) {
+      println(edge.srcId + " before send " + edge.srcAttr)
+      val newAttr = incrementNMap(edge.srcAttr)
+      println(edge.srcId + " send " + newAttr + " to " + edge.dstId)
+      if (edge.dstAttr != newAttr) {
         Iterator((edge.dstId, newAttr))
       } else {
         Iterator.empty
@@ -112,15 +118,19 @@ object HarmonicCentrality extends Logging {
      * @return VD
      */
     def messageCombiner(a: NMap, b: NMap): NMap = {
+      //println("a: " + a)
+      //println("b: " + b)
       val result = new mutable.HashMap[Int, HLL]()
       for (i <- 1 to 6){
         val a_hll = a.get(i)
         val b_hll = b.get(i)
         result(i) = new HyperLogLogMonoid(BIT_SIZE).zero
         if (a_hll.isDefined){
+          //println("a: " + a(i).estimatedSize + " i: " + i)
           result(i) += a(i)
         }
         if (b_hll.isDefined){
+          //println("b: " + b(i).estimatedSize + " i: " + i)
           result(i) += b(i)
         }
       }
