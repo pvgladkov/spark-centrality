@@ -1,6 +1,5 @@
 package cc.p2k.spark.graphx.lib
 
-import org.apache.spark.graphx.lib.ShortestPaths
 import org.apache.spark.Logging
 import org.apache.spark.graphx._
 import collection.mutable
@@ -83,6 +82,7 @@ object HarmonicCentrality extends Logging {
      * @return VD
      */
     def vertexProgram(x: VertexId, vertexValue: NMap, message: NMap) = {
+      vertexValue(0) = hll.create(x.toString.getBytes)
       for ((distance, _hll) <- message) {
         val op = vertexValue.get(distance)
         if (op.isEmpty){
@@ -111,7 +111,21 @@ object HarmonicCentrality extends Logging {
      * @param b Double VD
      * @return VD
      */
-    def messageCombiner(a: NMap, b: NMap): NMap = a
+    def messageCombiner(a: NMap, b: NMap): NMap = {
+      val result = new mutable.HashMap[Int, HLL]()
+      for (i <- 1 to 6){
+        val a_hll = a.get(i)
+        val b_hll = b.get(i)
+        result(i) = new HyperLogLogMonoid(BIT_SIZE).zero
+        if (a_hll.isDefined){
+          result(i) += a(i)
+        }
+        if (b_hll.isDefined){
+          result(i) += b(i)
+        }
+      }
+      result
+    }
 
     Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
       vertexProgram, sendMessage, messageCombiner)
