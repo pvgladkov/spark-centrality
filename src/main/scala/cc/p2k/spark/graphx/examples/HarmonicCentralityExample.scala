@@ -1,6 +1,8 @@
 package cc.p2k.spark.graphx.examples
 
 import cc.p2k.spark.graphx.lib.HarmonicCentrality
+import cc.p2k.spark.graphx.lib.HarmonicCentrality.NMap
+import com.twitter.algebird.HLL
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
@@ -8,7 +10,6 @@ import org.apache.spark.rdd._
 
 
 object HarmonicCentralityExample {
-
 
   def vertexNeighbours[VD, ED](graph: Graph[VD, ED]): VertexRDD[Int] = {
     graph.aggregateMessages[Int](
@@ -47,13 +48,15 @@ object HarmonicCentralityExample {
     val conf = new SparkConf().setAppName("Spark Pi").setMaster("local")
     val sc = new SparkContext(conf)
 
+    sc.setLogLevel("WARN")
+
     val vertices: RDD[(Long, Double)] = sc.parallelize(Array(
-      (1L, 1.toDouble), (2L, 2.toDouble), (3L, 3.toDouble), (4L, 4.toDouble)
+      (1L, 1.0), (2L, 2.0), (3L, 3.0), (4L, 4.0)
     ))
 
-    val edges: RDD[Edge[Double]] = sc.parallelize(Array(
-      Edge(1L, 2L, 1.toDouble), Edge(2L, 3L, 1.toDouble),
-      Edge(2L, 1L, 1.toDouble), Edge(3L, 2L, 1.toDouble)
+    val edges: RDD[Edge[Int]] = sc.parallelize(Array(
+      Edge(1L, 2L, 1), Edge(2L, 3L, 1),
+      Edge(2L, 1L, 1), Edge(3L, 2L, 1)
     ))
 
     val graph = Graph(vertices, edges)
@@ -77,12 +80,16 @@ object HarmonicCentralityExample {
 
     val sourceId = 1L
     val center = HarmonicCentrality
-    val hr = center.personalizedHarmonicCentrality(sourceId, graph)
-
-    println(hr)
+//    val hr = center.personalizedHarmonicCentrality(sourceId, graph)
+//
+//    println(hr)
 
     val hc = center.harmonicCentrality(graph)
-
+    hc.mapVertices((v:VertexId, mapping: NMap) => {
+      for((k,v) <- mapping){
+        println("step " + k + ": " + v.estimatedSize)
+      }
+    })
     println(hc.vertices.collect().mkString("\n"))
     println(hc.edges.collect().mkString("\n"))
 
