@@ -85,14 +85,17 @@ object HarmonicCentralityExample {
 //    println(hr)
 
     val hc = center.harmonicCentrality(graph)
-    hc.mapVertices((v:VertexId, mapping: NMap) => {
-      for((k,v) <- mapping){
-        println("step " + k + ": " + v.estimatedSize)
-      }
-    })
-    println(hc.vertices.collect().mkString("\n"))
-    println(hc.edges.collect().mkString("\n"))
 
-    sc.stop()
+    println("hc \n\n")
+
+    val vert = hc.vertices.collect()
+
+    for ((id, value) <- vert) {
+      println("id: " + id)
+      val sorted = value.toSeq.sortBy(_._1)
+      for ((k, v) <- sorted){
+        println("  step: " + k + " neighbours: " + v.estimatedSize)
+      }
+    }
   }
 }

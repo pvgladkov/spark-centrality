@@ -2,7 +2,7 @@ package cc.p2k.spark.graphx.lib
 
 import org.apache.spark.Logging
 import org.apache.spark.graphx._
-import collection.mutable
+import collection.immutable
 import scala.language.postfixOps
 import com.twitter.algebird._
 
@@ -10,7 +10,9 @@ import com.twitter.algebird._
 object HarmonicCentrality extends Logging {
 
   /** маппинг соседей по расстоянию */
-  type NMap = mutable.HashMap[Int, HLL]
+  type NMap = immutable.Map[Int, HLL]
+
+  val BIT_SIZE = 12
 
   /**
    * Harmonic Centrality for node
@@ -59,22 +61,18 @@ object HarmonicCentrality extends Logging {
    */
   def harmonicCentrality(graph: Graph[Double, Int], maxDistance: Int = 6): Graph[NMap, Int] = {
 
-    val BIT_SIZE = 12
-
     val hll = new HyperLogLogMonoid(BIT_SIZE)
 
     val initGraph: Graph[NMap, Int] = graph.mapVertices(
-      (id: VertexId, v: Double) => mutable.HashMap[Int, HLL](
+      (id: VertexId, v: Double) => immutable.Map[Int, HLL](
         (0, hll.create(id.toString.getBytes))
       )
     )
 
-    val initMessage = new mutable.HashMap[Int, HLL]() {
-      override def default(key:Int) = new HyperLogLogMonoid(BIT_SIZE).zero
-    }
+    val initMessage = immutable.Map[Int, HLL](0 -> new HyperLogLogMonoid(BIT_SIZE).zero)
 
-    def incrementNMap(p: NMap): NMap = p.map {
-      case (v, d) if v < maxDistance => (v + 1) -> d
+    def incrementNMap(p: NMap): NMap = p.filterKeys(_ < maxDistance).map {
+      case (v, d)  => (v + 1) -> d
     }
 
     /**
@@ -86,15 +84,8 @@ object HarmonicCentrality extends Logging {
     def vertexProgram(x: VertexId, vertexValue: NMap, message: NMap) = {
       println(x + " rec " + message)
       println(x + " has val: " + vertexValue)
-      for ((distance, _hll) <- message) {
-        val op = vertexValue.get(distance)
-        if (op.isEmpty){
-          vertexValue(distance) = new HyperLogLogMonoid(BIT_SIZE).zero
-        }
-        vertexValue(distance) += _hll
-      }
-      println("res val for " + x + " : "+ vertexValue)
-      vertexValue
+
+      addMaps(vertexValue, message)
     }
 
     /**
@@ -105,7 +96,8 @@ object HarmonicCentrality extends Logging {
       println(edge.srcId + " before send " + edge.srcAttr)
       val newAttr = incrementNMap(edge.srcAttr)
       println(edge.srcId + " send " + newAttr + " to " + edge.dstId)
-      if (edge.dstAttr != newAttr) {
+
+      if (!isEqual(edge.dstAttr, newAttr)){
         Iterator((edge.dstId, newAttr))
       } else {
         Iterator.empty
@@ -118,27 +110,38 @@ object HarmonicCentrality extends Logging {
      * @return VD
      */
     def messageCombiner(a: NMap, b: NMap): NMap = {
-      //println("a: " + a)
-      //println("b: " + b)
-      val result = new mutable.HashMap[Int, HLL]()
-      for (i <- 1 to 6){
-        val a_hll = a.get(i)
-        val b_hll = b.get(i)
-        result(i) = new HyperLogLogMonoid(BIT_SIZE).zero
-        if (a_hll.isDefined){
-          //println("a: " + a(i).estimatedSize + " i: " + i)
-          result(i) += a(i)
-        }
-        if (b_hll.isDefined){
-          //println("b: " + b(i).estimatedSize + " i: " + i)
-          result(i) += b(i)
-        }
-      }
-      result
+      addMaps(a, b)
     }
 
+    // для каждого узла посчитали какие узлы доступны за конкретное число шагов
     Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
       vertexProgram, sendMessage, messageCombiner)
+  }
+
+  private def addMaps(nmap1: NMap, nmap2: NMap): NMap = {
+    (nmap1.keySet ++ nmap2.keySet).map({
+      k => k -> (
+        nmap1.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero) +
+        nmap2.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero))
+    }).toMap
+  }
+
+  /**
+   * проверка, что b не меняет число соседей
+   * @param a NMap
+   * @param b NMap
+   * @return
+   */
+  private def isEqual(a: NMap, b: NMap):Boolean = {
+    val newVal = addMaps(a, b)
+    for (key <- b.keySet){
+      val oldSize = a.getOrElse(key, new HyperLogLogMonoid(BIT_SIZE).zero).estimatedSize
+      val newSize = newVal.getOrElse(key, new HyperLogLogMonoid(BIT_SIZE).zero).estimatedSize
+      if (oldSize != newSize){
+        return false
+      }
+    }
+    true
   }
 
   private def calculateForNode(distances: NMap) = {
@@ -150,8 +153,6 @@ object HarmonicCentrality extends Logging {
         .setScale(5, BigDecimal.RoundingMode.HALF_UP)
         .toDouble
     }
-
-
   }
 
 }
