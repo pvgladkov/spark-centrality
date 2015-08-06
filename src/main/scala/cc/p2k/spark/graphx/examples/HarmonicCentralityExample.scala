@@ -78,28 +78,15 @@ object HarmonicCentralityExample {
       println(n.toString())
     }
 
-    val sourceId = 1L
     val center = HarmonicCentrality
-//    val hr = center.personalizedHarmonicCentrality(sourceId, graph)
-//
-//    println(hr)
+
+    println((1L, center.personalizedHarmonicCentrality(1L, graph)))
+    println((2L, center.personalizedHarmonicCentrality(2L, graph)))
+    println((3L, center.personalizedHarmonicCentrality(3L, graph)))
 
     val hc = center.harmonicCentrality(graph)
 
-    println("hc \n\n")
+    println(hc.vertices.collect().mkString("\n"))
 
-    val vert = hc.vertices.collect()
-
-    for ((id, value) <- vert) {
-      println("id: " + id)
-      val sorted = value.filterKeys(_ > 0).toSeq.sortBy(_._1)
-      var total = new HyperLogLogMonoid(12).zero
-      for ((k, v) <- sorted){
-        val before = total.estimatedSize
-        total += v
-        val after = total.estimatedSize
-        println("  step: " + k + " neighbours: " + (after-before))
-      }
-    }
   }
 }

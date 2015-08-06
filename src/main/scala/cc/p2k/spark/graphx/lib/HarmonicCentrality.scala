@@ -14,13 +14,15 @@ object HarmonicCentrality extends Logging {
 
   val BIT_SIZE = 12
 
+  val hll = new HyperLogLogMonoid(BIT_SIZE)
+
   /**
    * Harmonic Centrality for node
    * @param vertexId VertexId
    * @param graph Graph
    * @return
    */
-  def personalizedHarmonicCentrality(vertexId: VertexId, graph: Graph[Double, Double]): Double = {
+  def personalizedHarmonicCentrality(vertexId: VertexId, graph: Graph[Double, Int]): Double = {
     val initialGraph = graph.mapVertices(
       (id, _) => {
         if (id == vertexId) 0.0
@@ -32,7 +34,7 @@ object HarmonicCentrality extends Logging {
 
     def mergeMsg(a: Double, b: Double) = math.min(a, b)
 
-    def sendMsg(triplet: EdgeTriplet[Double, Double]) = {
+    def sendMsg(triplet: EdgeTriplet[Double, Int]) = {
       if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
         Iterator((triplet.dstId, triplet.srcAttr + triplet.attr))
       } else {
@@ -59,9 +61,7 @@ object HarmonicCentrality extends Logging {
    * @param maxDistance Int
    * @return
    */
-  def harmonicCentrality(graph: Graph[Double, Int], maxDistance: Int = 6): Graph[NMap, Int] = {
-
-    val hll = new HyperLogLogMonoid(BIT_SIZE)
+  def harmonicCentrality(graph: Graph[Double, Int], maxDistance: Int = 6): Graph[Double, Int] = {
 
     val initGraph: Graph[NMap, Int] = graph.mapVertices(
       (id: VertexId, v: Double) => immutable.Map[Int, HLL](
@@ -82,9 +82,6 @@ object HarmonicCentrality extends Logging {
      * @return VD
      */
     def vertexProgram(x: VertexId, vertexValue: NMap, message: NMap) = {
-      println(x + " rec " + message)
-      println(x + " has val: " + vertexValue)
-
       addMaps(vertexValue, message)
     }
 
@@ -93,9 +90,7 @@ object HarmonicCentrality extends Logging {
      * @return Iterator[(VertexId, A)]
      */
     def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, NMap)] = {
-      println(edge.srcId + " before send " + edge.srcAttr)
       val newAttr = incrementNMap(edge.srcAttr)
-      println(edge.srcId + " send " + newAttr + " to " + edge.dstId)
 
       if (!isEqual(edge.dstAttr, newAttr)) {
         Iterator((edge.dstId, newAttr))
@@ -114,8 +109,10 @@ object HarmonicCentrality extends Logging {
     }
 
     // для каждого узла посчитали какие узлы доступны за конкретное число шагов
-    Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
+    val distances = Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
       vertexProgram, sendMessage, messageCombiner)
+
+    distances.mapVertices[Double]((id: VertexId, vertexValue: NMap) => calculateForNode(id, vertexValue))
   }
 
   private def addMaps(nmap1: NMap, nmap2: NMap): NMap = {
@@ -144,10 +141,16 @@ object HarmonicCentrality extends Logging {
     true
   }
 
-  private def calculateForNode(distances: NMap) = {
+  /**
+   *
+   * @param id VertexId
+   * @param distances NMap
+   * @return
+   */
+  private def calculateForNode(id:VertexId, distances: NMap) = {
     var harmonic = 0.0
     val sorted = distances.filterKeys(_ > 0).toSeq.sortBy(_._1)
-    var total = new HyperLogLogMonoid(BIT_SIZE).zero
+    var total = hll.create(id.toString.getBytes)
     for ((step, v) <- sorted) {
       val before = total.estimatedSize
       total += v
@@ -156,6 +159,7 @@ object HarmonicCentrality extends Logging {
         .setScale(5, BigDecimal.RoundingMode.HALF_UP)
         .toDouble
     }
+    harmonic
   }
 
 }
