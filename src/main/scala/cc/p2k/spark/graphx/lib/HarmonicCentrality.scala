@@ -20,7 +20,7 @@ object HarmonicCentrality extends Logging {
    * @param graph Graph
    * @return
    */
-  def personalizedHarmonicCentrality(vertexId: VertexId, graph: Graph[Double, Double]): Double ={
+  def personalizedHarmonicCentrality(vertexId: VertexId, graph: Graph[Double, Double]): Double = {
     val initialGraph = graph.mapVertices(
       (id, _) => {
         if (id == vertexId) 0.0
@@ -28,9 +28,9 @@ object HarmonicCentrality extends Logging {
       }
     )
 
-    val vp = (id: VertexId, dist: Double, newDist:Double) => math.min(dist, newDist)
+    val vp = (id: VertexId, dist: Double, newDist: Double) => math.min(dist, newDist)
 
-    def mergeMsg(a: Double, b: Double) = math.min(a,b)
+    def mergeMsg(a: Double, b: Double) = math.min(a, b)
 
     def sendMsg(triplet: EdgeTriplet[Double, Double]) = {
       if (triplet.srcAttr + triplet.attr < triplet.dstAttr) {
@@ -49,7 +49,7 @@ object HarmonicCentrality extends Logging {
           else 1 / tuple._2
         }
       )
-      .reduce( (a, b) => a + b )
+      .reduce((a, b) => a + b)
 
     hr
   }
@@ -72,7 +72,7 @@ object HarmonicCentrality extends Logging {
     val initMessage = immutable.Map[Int, HLL](0 -> new HyperLogLogMonoid(BIT_SIZE).zero)
 
     def incrementNMap(p: NMap): NMap = p.filterKeys(_ < maxDistance).map {
-      case (v, d)  => (v + 1) -> d
+      case (v, d) => (v + 1) -> d
     }
 
     /**
@@ -92,12 +92,12 @@ object HarmonicCentrality extends Logging {
      * @param edge EdgeTriplet  EdgeTriplet[VD, ED]
      * @return Iterator[(VertexId, A)]
      */
-    def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, NMap)] ={
+    def sendMessage(edge: EdgeTriplet[NMap, Int]): Iterator[(VertexId, NMap)] = {
       println(edge.srcId + " before send " + edge.srcAttr)
       val newAttr = incrementNMap(edge.srcAttr)
       println(edge.srcId + " send " + newAttr + " to " + edge.dstId)
 
-      if (!isEqual(edge.dstAttr, newAttr)){
+      if (!isEqual(edge.dstAttr, newAttr)) {
         Iterator((edge.dstId, newAttr))
       } else {
         Iterator.empty
@@ -105,8 +105,8 @@ object HarmonicCentrality extends Logging {
     }
 
     /**
-     * @param a Double VD
-     * @param b Double VD
+     * @param a NMap
+     * @param b NMap
      * @return VD
      */
     def messageCombiner(a: NMap, b: NMap): NMap = {
@@ -122,7 +122,7 @@ object HarmonicCentrality extends Logging {
     (nmap1.keySet ++ nmap2.keySet).map({
       k => k -> (
         nmap1.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero) +
-        nmap2.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero))
+          nmap2.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero))
     }).toMap
   }
 
@@ -132,12 +132,12 @@ object HarmonicCentrality extends Logging {
    * @param b NMap
    * @return
    */
-  private def isEqual(a: NMap, b: NMap):Boolean = {
+  private def isEqual(a: NMap, b: NMap): Boolean = {
     val newVal = addMaps(a, b)
-    for (key <- b.keySet){
+    for (key <- b.keySet) {
       val oldSize = a.getOrElse(key, new HyperLogLogMonoid(BIT_SIZE).zero).estimatedSize
       val newSize = newVal.getOrElse(key, new HyperLogLogMonoid(BIT_SIZE).zero).estimatedSize
-      if (oldSize != newSize){
+      if (oldSize != newSize) {
         return false
       }
     }
@@ -146,10 +146,13 @@ object HarmonicCentrality extends Logging {
 
   private def calculateForNode(distances: NMap) = {
     var harmonic = 0.0
-    for ((k, v) <- distances){
-      val current = v.estimatedSize
-      val prev = distances(k-1).estimatedSize
-      harmonic += BigDecimal((current - prev) / k)
+    val sorted = distances.filterKeys(_ > 0).toSeq.sortBy(_._1)
+    var total = new HyperLogLogMonoid(BIT_SIZE).zero
+    for ((step, v) <- sorted) {
+      val before = total.estimatedSize
+      total += v
+      val after = total.estimatedSize
+      harmonic += BigDecimal((after - before) / step)
         .setScale(5, BigDecimal.RoundingMode.HALF_UP)
         .toDouble
     }

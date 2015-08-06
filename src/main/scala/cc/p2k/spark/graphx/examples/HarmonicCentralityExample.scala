@@ -2,7 +2,7 @@ package cc.p2k.spark.graphx.examples
 
 import cc.p2k.spark.graphx.lib.HarmonicCentrality
 import cc.p2k.spark.graphx.lib.HarmonicCentrality.NMap
-import com.twitter.algebird.HLL
+import com.twitter.algebird.{HyperLogLogMonoid, HLL}
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.graphx._
 import org.apache.spark.rdd._
@@ -92,9 +92,13 @@ object HarmonicCentralityExample {
 
     for ((id, value) <- vert) {
       println("id: " + id)
-      val sorted = value.toSeq.sortBy(_._1)
+      val sorted = value.filterKeys(_ > 0).toSeq.sortBy(_._1)
+      var total = new HyperLogLogMonoid(12).zero
       for ((k, v) <- sorted){
-        println("  step: " + k + " neighbours: " + v.estimatedSize)
+        val before = total.estimatedSize
+        total += v
+        val after = total.estimatedSize
+        println("  step: " + k + " neighbours: " + (after-before))
       }
     }
   }
