@@ -127,7 +127,7 @@ object HarmonicCentrality extends Logging {
    * проверка, что b не меняет число соседей
    * @param a NMap
    * @param b NMap
-   * @return
+   * @return boolean
    */
   private def isEqual(a: NMap, b: NMap): Boolean = {
     val newVal = addMaps(a, b)
@@ -145,9 +145,9 @@ object HarmonicCentrality extends Logging {
    *
    * @param id VertexId
    * @param distances NMap
-   * @return
+   * @return Double
    */
-  private def calculateForNode(id:VertexId, distances: NMap) = {
+  private def calculateForNode(id:VertexId, distances: NMap): Double = {
     var harmonic = 0.0
     val sorted = distances.filterKeys(_ > 0).toSeq.sortBy(_._1)
     var total = hll.create(id.toString.getBytes)
