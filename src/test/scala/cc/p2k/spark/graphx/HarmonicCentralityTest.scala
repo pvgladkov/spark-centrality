@@ -9,7 +9,6 @@ import org.scalatest._
 class HarmonicCentralityTest extends FunSuite {
 
   test("1") {
-
     val conf = new SparkConf().setAppName("Spark").setMaster("local")
     val sc = new SparkContext(conf)
 
@@ -35,6 +34,38 @@ class HarmonicCentralityTest extends FunSuite {
         BigDecimal(v).setScale(1, BigDecimal.RoundingMode.HALF_UP).toDouble == valid(k.toInt)
       )
     }
+
+    sc.stop()
+  }
+
+  test("2") {
+    val conf = new SparkConf().setAppName("Spark").setMaster("local")
+    val sc = new SparkContext(conf)
+
+    sc.setLogLevel("WARN")
+
+    val vertices: RDD[(Long, Double)] = sc.parallelize(Array(
+      (1L, 1.0), (2L, 2.0), (3L, 3.0), (4L, 4.0), (5L, 4.0)
+    ))
+
+    val edges: RDD[Edge[Int]] = sc.parallelize(Array(
+      Edge(1L, 2L, 1), Edge(2L, 3L, 1), Edge(3L, 4L, 1), Edge(2L, 4L, 1), Edge(5L, 1L, 1),
+      Edge(2L, 1L, 1), Edge(3L, 2L, 1), Edge(4L, 3L, 1), Edge(4L, 2L, 1), Edge(1L, 5L, 1)
+    ))
+
+    val graph = Graph(vertices, edges)
+    val center = HarmonicCentrality
+
+    val valid = Map(1->3.0, 2->3.5, 3->2.8, 4->2.8, 5->2.2)
+    val hc = center.harmonicCentrality(graph)
+
+    for ((k,v) <- hc.vertices.collect().iterator){
+      assert(
+        BigDecimal(v).setScale(1, BigDecimal.RoundingMode.HALF_UP).toDouble == valid(k.toInt)
+      )
+    }
+
+    sc.stop()
   }
 
 }
