@@ -1,5 +1,7 @@
 # Spark Centrality Library
 
+[![Build Status](https://travis-ci.org/webgeist/spark-centrality.svg?branch=master)](https://travis-ci.org/webgeist/spark-centrality)
+
 ## Linking
 
 Using SBT: 
