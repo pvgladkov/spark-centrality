@@ -4,11 +4,11 @@
 
 Using SBT: 
 
-`libraryDependencies += "cc.p2k" %% "spark-centrality" % "0.1"`
+`libraryDependencies += "cc.p2k" %% "spark-centrality" % "0.11"`
 
 Or:
 
-`> $SPARK_HOME/bin/spark-shell --packages webgeist:spark-centrality:0.1`
+`> $SPARK_HOME/bin/spark-shell --packages webgeist:spark-centrality:0.11`
 
 ## Algorithms
 
