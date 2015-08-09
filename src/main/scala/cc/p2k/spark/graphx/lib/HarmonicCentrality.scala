@@ -9,7 +9,7 @@ import com.twitter.algebird._
 
 object HarmonicCentrality extends Logging {
 
-  /** маппинг соседей по расстоянию */
+  /** mapping neighbours */
   type NMap = immutable.Map[Int, HLL]
 
   val BIT_SIZE = 12
@@ -22,13 +22,13 @@ object HarmonicCentrality extends Logging {
    * @param graph Graph
    * @return
    */
-  def personalizedHarmonicCentrality(vertexId: VertexId, graph: Graph[Double, Int]): Double = {
-    val initialGraph = graph.mapVertices(
+  def personalizedHarmonicCentrality[VD, ED](vertexId: VertexId, graph: Graph[VD, ED]): Double = {
+    val initialGraph: Graph[Double, Int] = graph.mapVertices(
       (id, _) => {
         if (id == vertexId) 0.0
         else Double.PositiveInfinity
       }
-    )
+    ).mapEdges(_ => 1)
 
     val vp = (id: VertexId, dist: Double, newDist: Double) => math.min(dist, newDist)
 
@@ -44,30 +44,29 @@ object HarmonicCentrality extends Logging {
 
     val paths = initialGraph.pregel(Double.PositiveInfinity)(vp, sendMsg, mergeMsg)
 
-    val hr = paths.vertices
-      .map[Double](
-        tuple => {
-          if (tuple._1 == vertexId) 0
-          else 1 / tuple._2
-        }
-      )
-      .reduce((a, b) => a + b)
+    val hr = paths.vertices.map[Double](
+      tuple => {
+        if (tuple._1 == vertexId) 0
+        else 1 / tuple._2
+      }
+    ).reduce((a, b) => a + b)
 
     hr
   }
 
   /**
+   * Harmonic Centrality for all nodes
    * @param graph Graph
    * @param maxDistance Int
    * @return
    */
-  def harmonicCentrality(graph: Graph[Double, Int], maxDistance: Int = 6): Graph[Double, Int] = {
+  def harmonicCentrality[VD, ED](graph: Graph[VD, ED], maxDistance: Int = 6): Graph[Double, Int] = {
 
     val initGraph: Graph[NMap, Int] = graph.mapVertices(
-      (id: VertexId, v: Double) => immutable.Map[Int, HLL](
+      (id: VertexId, v: VD) => immutable.Map[Int, HLL](
         (0, hll.create(id.toString.getBytes))
       )
-    )
+    ).mapEdges(_ => 1)
 
     val initMessage = immutable.Map[Int, HLL](0 -> new HyperLogLogMonoid(BIT_SIZE).zero)
 
@@ -76,6 +75,7 @@ object HarmonicCentrality extends Logging {
     }
 
     /**
+     * program which runs on each vertex
      * @param x VertexId
      * @param vertexValue Double VD
      * @param message Double message type
@@ -86,6 +86,8 @@ object HarmonicCentrality extends Logging {
     }
 
     /**
+     * function that is applied to out
+     * edges of vertices that received messages
      * @param edge EdgeTriplet  EdgeTriplet[VD, ED]
      * @return Iterator[(VertexId, A)]
      */
@@ -100,6 +102,7 @@ object HarmonicCentrality extends Logging {
     }
 
     /**
+     * merge messages
      * @param a NMap
      * @param b NMap
      * @return VD
@@ -108,7 +111,6 @@ object HarmonicCentrality extends Logging {
       addMaps(a, b)
     }
 
-    // для каждого узла посчитали какие узлы доступны за конкретное число шагов
     val distances = Pregel(initGraph, initMessage, activeDirection = EdgeDirection.In)(
       vertexProgram, sendMessage, messageCombiner)
 
@@ -119,12 +121,12 @@ object HarmonicCentrality extends Logging {
     (nmap1.keySet ++ nmap2.keySet).map({
       k => k -> (
         nmap1.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero) +
-          nmap2.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero))
+        nmap2.getOrElse(k, new HyperLogLogMonoid(BIT_SIZE).zero))
     }).toMap
   }
 
   /**
-   * проверка, что b не меняет число соседей
+   * neighbours count does not change by b
    * @param a NMap
    * @param b NMap
    * @return boolean

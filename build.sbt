@@ -1,6 +1,6 @@
 name := "spark-centrality"
 
-version := "0.1"
+version := "0.11"
 
 scalaVersion := "2.10.4"
 
@@ -17,7 +17,5 @@ sparkComponents += "graphx"
 spName := "webgeist/spark-centrality"
 
 sparkVersion := "1.4.0"
-
-spAppendScalaVersion := true
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
