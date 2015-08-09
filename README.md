@@ -2,7 +2,13 @@
 
 ## Linking
 
-Using SBT: `libraryDependencies += "cc.p2k" %% "spark-centrality" % "0.1"`
+Using SBT: 
+
+`libraryDependencies += "cc.p2k" %% "spark-centrality" % "0.1"`
+
+Or:
+
+`> $SPARK_HOME/bin/spark-shell --packages webgeist:spark-centrality:0.1`
 
 ## Algorithms
 
@@ -19,6 +25,8 @@ It uses HyperLogLog algorithm.
 Example:
 
 ```scala
+import cc.p2k.spark.graphx.lib.HarmonicCentrality
+
 val vertices: RDD[(Long, Double)] = sc.parallelize(Array(
   (1L, 1.0), (2L, 2.0), (3L, 3.0), (4L, 4.0)
 ))
