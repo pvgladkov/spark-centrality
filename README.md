@@ -39,7 +39,7 @@ val edges: RDD[Edge[Int]] = sc.parallelize(Array(
 ))
 
 val graph = Graph(vertices, edges)
-
+val center = HarmonicCentrality
 val hc = center.harmonicCentrality(graph)
 
 println(hc.vertices.collect().mkString("\n"))
