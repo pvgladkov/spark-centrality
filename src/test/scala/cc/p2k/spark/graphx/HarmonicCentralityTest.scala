@@ -1,6 +1,6 @@
 package cc.p2k.spark.graphx
 
-import cc.p2k.spark.graphx.lib.HarmonicCentrality
+import cc.p2k.spark.graphx.lib.{Diameter, HarmonicCentrality}
 import org.apache.spark.graphx.{Graph, Edge}
 import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkContext, SparkConf}

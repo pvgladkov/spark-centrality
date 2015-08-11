@@ -16,6 +16,8 @@ sparkComponents += "graphx"
 
 spName := "webgeist/spark-centrality"
 
-sparkVersion := "1.4.0"
+sparkVersion := "1.4.1"
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
+
+parallelExecution in Test := false
