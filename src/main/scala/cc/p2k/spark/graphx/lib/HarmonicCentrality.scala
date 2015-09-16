@@ -12,9 +12,9 @@ object HarmonicCentrality extends Logging {
   /** mapping neighbours */
   type NMap = immutable.Map[Int, HLL]
 
-  val BIT_SIZE = 12
+  private val BIT_SIZE = 12
 
-  val hll = new HyperLogLogMonoid(BIT_SIZE)
+  private val hll = new HyperLogLogMonoid(BIT_SIZE)
 
   /**
    * Harmonic Centrality for node
