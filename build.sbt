@@ -1,12 +1,12 @@
 name := "spark-centrality"
 
-version := "0.11"
+version := "0.12"
 
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.7"
 
 organization := "cc.p2k"
 
-libraryDependencies += "com.twitter" % "algebird-core_2.10" % "0.10.2"
+libraryDependencies += "com.twitter" %% "algebird-core" % "0.11.0"
 
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.4" % "test"
 
@@ -16,7 +16,7 @@ sparkComponents += "graphx"
 
 spName := "webgeist/spark-centrality"
 
-sparkVersion := "1.4.1"
+sparkVersion := "1.5.0"
 
 credentials += Credentials(Path.userHome / ".ivy2" / ".sbtcredentials")
 
