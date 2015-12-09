@@ -45,7 +45,6 @@ val hc = center.harmonicCentrality(graph)
 println(hc.vertices.collect().mkString("\n"))
 
 ```
-
 Output:
 
 ```
